@@ -1,0 +1,179 @@
+```{r}
+
+# Needed libraries
+library(e1071)
+library(caret)
+library(tidyverse)
+
+# Loading dataset from desktop
+data <- read.csv("/Users/drew/data.csv")
+
+# Defining product success column
+threshold <- quantile(data$Sales, 0.75)
+
+# A product is labeled as successful when sales are above the 75th percentile 
+data$ProductSuccess <- ifelse(data$Sales > threshold, 1, 0)
+
+# Making the product success column a factor for future use
+data$ProductSuccess <- as.factor(data$ProductSuccess)
+
+# Set the seed for so the results stay consistent 
+set.seed(123)
+
+# Setting 80% of the data to be used for training
+trainIndex <- createDataPartition(data$ProductSuccess, p = 0.8, list = FALSE)
+
+# Creating a new training set 
+trainData <- data[trainIndex, ]
+
+# Remaining data not in trainData goes into testData
+testData <- data[-trainIndex, ]
+
+# Defining the variables to be used by our model (the columns)
+predictors <- c("Quantity.Ordered", "Price.Each", "Month", "Hour")
+
+# Only take the predictors and the traget varible in product success to put into variable train_svm 
+train_svm <- trainData[, c(predictors, "ProductSuccess")]
+
+# Same as above but with the testData we saved earlier 
+test_svm <- testData[, c(predictors, "ProductSuccess")]
+
+# Train an SVM model cross-validation and RBF
+svm_model <- train(
+  ProductSuccess ~ ., # Use all predictors to predict the product success
+  data = train_svm, # Training dataset containing target variable and the predictors
+  method = "svmRadial", # Clarifying the SVM method to be used by RBF that we loaded
+  trControl = trainControl(method = "cv", number = 5), # Clarify the cross-validation method
+  tuneGrid = expand.grid(C = c(0.25, 0.5, 1, 2, 4), sigma = 0.5056818) # The grid for tuning
+)
+
+# Display the best model results
+print(svm_model)
+
+# Starting to predict on the test set
+predictions <- predict(svm_model, test_svm)
+
+# Making a confusion matrix to compare predictions with the actual target values 
+confusion_matrix <- confusionMatrix(predictions, test_svm$ProductSuccess)
+
+# Printing the confusion matrix
+print(confusion_matrix)
+
+# Store from the confusion matrix the accuracy of the model
+accuracy <- confusion_matrix$overall["Accuracy"]
+
+# Stire the precision of the confusion matrix
+precision <- confusion_matrix$byClass["Precision"]
+
+# Store the sensitivity from the confusion matrix (recall -> sensitivity)
+sensitivity <- confusion_matrix$byClass["Recall"]
+
+# Calculating the F1-Score (precision and sensitivity)
+f1_score <- 2 * ((precision * sensitivity) / (precision + sensitivity))
+
+# Printing the accuracy of the model
+print(paste("Accuracy:", accuracy))
+
+# Printing the precision of the model
+print(paste("Precision:", precision))
+
+# Print the sensitivity of the model
+print(paste("Recall:", sensitivity))
+
+# Print the F1-Score of the model
+print(paste("F1-Score:", f1_score))
+
+```
+
+```{r}
+
+# Needed libraries
+library(randomForest)
+library(caret)
+library(tidyverse)
+
+# Loading dataset from desktop
+data <- read.csv("/Users/drew/data.csv")
+
+# Defining product success column
+threshold <- quantile(data$Sales, 0.75)
+
+# A product is labeled as successful when sales are above the 75th percentile 
+data$ProductSuccess <- ifelse(data$Sales > threshold, 1, 0)
+
+# Making the product success column a factor for future use
+data$ProductSuccess <- as.factor(data$ProductSuccess)
+
+# Set the seed for so the results stay consistent 
+set.seed(123)
+
+# Setting 80% of the data to be used for training
+trainIndex <- createDataPartition(data$ProductSuccess, p = 0.8, list = FALSE)
+
+# Creating a new training set 
+trainData <- data[trainIndex, ]
+
+# Remaining data not in trainData goes into testData
+testData <- data[-trainIndex, ]
+
+# Defining the variables to be used by our model (the columns)
+predictors <- c("Quantity.Ordered", "Price.Each", "Month", "Hour")
+
+# Only take the predictors and the traget varible in product success to put into variable train_svm 
+train_rf <- trainData[, c(predictors, "ProductSuccess")]
+
+# Same as above but with the testData we saved earlier 
+test_rf <- testData[, c(predictors, "ProductSuccess")]
+
+# Begin trainging the random forest model
+set.seed(123)
+rf_model <- randomForest( # Using random forest
+  ProductSuccess ~ .,  # All predictors being used to help predict product success
+  data = train_rf, # Training using predictors and target variable
+  ntree = 500, # Number of trees grown in forest
+  mtry = 2,    # Number of predictors randomly selected for each split
+  importance = TRUE # Calculate the importance of each predictor variable as a whole
+)
+
+# Print the random forest model summary
+print(rf_model)
+
+# Evaluating our model on a test set 
+rf_predictions <- predict(rf_model, test_rf)
+
+# Using a confusion matrix to compare the model's predictions and the target values
+confusion_matrix <- confusionMatrix(rf_predictions, test_rf$ProductSuccess)
+
+# Print out the confusion matrix
+print(confusion_matrix)
+
+# Plotting the  variable importance
+varImpPlot(rf_model)
+
+# Calculate additional metrics to evaluate the Random Forest model's performance
+
+# Extract the overall accuracy of the model from the confusion matrix
+accuracy <- confusion_matrix$overall["Accuracy"]
+
+# Get the precision from the confusion matrix
+precision <- confusion_matrix$byClass["Precision"]
+
+# Get the sensitivity from the confusion matrix (sensitivty == recall)
+sensitivity <- confusion_matrix$byClass["Recall"]
+
+# Calculate the F1-Score
+f1_score <- 2 * ((precision * sensitivity) / (precision + sensitivity))
+
+# Print the accuracy of the model
+print(paste("Accuracy:", accuracy))
+
+# Print the precision of the model
+print(paste("Precision:", precision))
+
+# Print the recall (sensitivity) of the model
+print(paste("Recall:", sensitivity))
+
+# Print the F1-Score of the model 
+print(paste("F1-Score:", f1_score))
+
+```
